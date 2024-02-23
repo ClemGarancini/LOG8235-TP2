@@ -1,4 +1,4 @@
 .DS_Store
 
-./Intermediate/*
-./Saved/*
+Intermediate/*
+Saved/*
