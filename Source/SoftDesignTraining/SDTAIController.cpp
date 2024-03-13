@@ -10,14 +10,20 @@
 //#include "UnrealMathUtility.h"
 #include "SDTUtils.h"
 #include "EngineUtils.h"
+#include <iostream>
+#include <typeinfo>
+#include "NavigationSystem/Public/NavigationSystem.h"
+#include "CoreMinimal.h"
 
 ASDTAIController::ASDTAIController(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer.SetDefaultSubobjectClass<USDTPathFollowingComponent>(TEXT("PathFollowingComponent")))
 {
+ 
 }
 
 void ASDTAIController::GoToBestTarget(float deltaTime)
 {
+    OnMoveToTarget();
     // Move to target depending on current behavior
     // This function is called while m_ReachedTarget is true.
     // Check void ASDTBaseAIController::Tick for how it works.
@@ -37,14 +43,35 @@ void ASDTAIController::OnMoveCompleted(FAIRequestID RequestID, const FPathFollow
 
 void ASDTAIController::ShowNavigationPath()
 {
-    // Show current navigation path DrawDebugLine and DrawDebugSphere
-    // Use the UPathFollowingComponent of the AIController to get the path
-    // This function is called while m_ReachedTarget is false 
-    // Check void ASDTBaseAIController::Tick for how it works.
+    //FNavPathSharedPtr path = PathFollowingComponent->GetPath();
 }
 
 void ASDTAIController::ChooseBehavior(float deltaTime)
 {
+    UPathFollowingComponent* pathFollowingComponent = GetPathFollowingComponent();
+
+    EPathFollowingRequestResult::Type moveRequestResult1 = MoveToLocation(GetPawn()->GetActorLocation(), 10.f);
+    TArray<FNavPathPoint> pathRequested = pathFollowingComponent->GetPath()->GetPathPoints();
+    switch (moveRequestResult1) {
+    case EPathFollowingRequestResult::AlreadyAtGoal:
+        UE_LOG(LogTemp, Warning, TEXT("AlreadyAtGoal"));
+        break;
+    case EPathFollowingRequestResult::RequestSuccessful:
+        UE_LOG(LogTemp, Warning, TEXT("Success"));
+        if (pathRequested.Num() > 1) {
+            for (int i = 0; i < pathRequested.Num() - 1; i++) {
+                DrawDebugLine(GetWorld(), pathRequested[i].Location, pathRequested[i + 1].Location, FColor::Green);
+            }
+        }
+        else {
+            UE_LOG(LogTemp, Warning, TEXT("not enough points"));
+        }
+        break;
+    case EPathFollowingRequestResult::Failed:
+        UE_LOG(LogTemp, Warning, TEXT("Failed"));
+        break;
+    }
+
     UpdatePlayerInteraction(deltaTime);
 }
 
@@ -106,4 +133,54 @@ void ASDTAIController::AIStateInterrupted()
 {
     StopMovement();
     m_ReachedTarget = true;
+}
+
+void ASDTAIController::FindPathToNearestCollectible(TArray<FVector> collectibleLocations)
+{
+    FVector pawnLocation = GetPawn()->GetActorLocation();
+    Algo::Sort(collectibleLocations, [&](FVector lhs, FVector rhs)
+        {
+            return (FVector::Dist(pawnLocation, lhs) < FVector::Dist(pawnLocation, rhs));
+        });
+    
+    //for (FV/*ector collectible : collectibleLocations) {
+    //    EPathFollowingRequestResult::Type moveRequestResult = MoveToLocation(collectible);
+    //    if (moveRequestResult == EPathFollowingRequestResult::RequestSuccessful) {
+
+    //    }
+    //}*/
+
+    //UNavigationSystemV1* navSystem = UNavigationSystemV1::GetCurrent(GetWorld());
+    //if (navSystem) {
+    //    /*INavigationDataInterface* currentNavData = navSystem->GetMainNavData();
+    //    if (currentNavData) {
+    //        FString navMeshName = currentNavData->GetName();
+    //        UE_LOG(LogTemp, Warning, TEXT("navMesh: %s"), *navMeshName);
+    //    }
+    //    else {
+    //        UE_LOG(LogTemp, Warning, TEXT("noNavmesh"));
+    //    }*/
+
+
+    //    FNavLocation startNavLocation, endNavLocation;
+    //    FPathFindingQuery pathQuery;
+    //    TWeakObjectPtr<ANavigationData> weakPtrNavData(navSystem->GetDefaultNavDataInstance());
+    //    pathQuery.NavData = weakPtrNavData;
+    //    pathQuery.StartLocation = startLocation;
+    //    pathQuery.EndLocation = endLocation;
+
+    //    FPathFindingResult pathFound = navSystem->FindPathSync(pathQuery);
+    //    bool bPathFound = pathFound.IsSuccessful();
+    //    if (bPathFound) {
+    //        TArray<FVector> pathPoints;
+    //        for (FNavPathPoint pathPoint : pathFound.Path->GetPathPoints()) {
+    //            pathPoints.Add(pathPoint.Location);
+    //        }
+    //        UPathFollowingComponent* pathFollowingComponent = GetPathFollowingComponent();
+    //        
+    //    }
+    //    else {
+    //        UE_LOG(LogTemp, Warning, TEXT("PathNotFound"));
+    //    }
+    
 }
